@@ -1,0 +1,285 @@
+# ================================
+# BHEKOS 6.0 - GIT IGNORE FILE
+# ================================
+
+# ========== OS GENERATED ==========
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+._*
+.DocumentRevisions-V100
+.fseventsd
+.SyncService
+.diskimage
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Linux
+*~
+
+# ========== DEVELOPMENT ==========
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+*.sublime-*
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+*.log
+logs/
+*.pid
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# ========== PROJECT SPECIFIC ==========
+# Build outputs
+dist/
+build/
+out/
+release/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Cache files
+.cache/
+
+# Config files (except manifest.json)
+config.local.json
+*.local.json
+
+# User data (should not be committed)
+user-data/
+saves/
+*.save
+highscores.json
+
+# Debug files
+debug/
+*.debug
+
+# ========== TESTING ==========
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output/
+
+# ========== MEDIA FILES ==========
+# Large media files (should be hosted separately)
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.wav
+*.mp3
+*.ogg
+*.flac
+
+# High-res images (unless specifically needed)
+wallpapers/original/
+*.psd
+*.ai
+*.sketch
+
+# ========== SECURITY ==========
+# Sensitive data
+*.key
+*.pem
+*.crt
+*.cer
+*.p12
+*.pfx
+*.jks
+keystore/
+secrets/
+passwords.json
+credentials.json
+
+# API keys and tokens
+api-keys.json
+tokens.json
+.firebaserc
+.firebase/
+
+# ========== PACKAGE MANAGERS ==========
+# Yarn
+.yarn/
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
+
+# ========== IDE SPECIFIC ==========
+# VS Code
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# IntelliJ
+*.iml
+*.ipr
+*.iws
+.idea_modules/
+
+# Eclipse
+.metadata
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.settings/
+.loadpath
+.recommenders
+
+# NetBeans
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# ========== MISCELLANEOUS ==========
+# Package files
+package-lock.json
+yarn.lock
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Dependencies (if using package manager)
+# Uncomment if using npm/yarn
+# node_modules/
+# jspm_packages/
+
+# Optional local development files
+local.json
+dev.json
+test.json
+
+# ========== CUSTOM FOR BHEKOS ==========
+# User-specific desktop layouts
+desktop-layout.user.json
+icon-settings.user.json
+
+# Game saves and user data
+user-saves/
+game-data/
+*.userdata
+
+# Temporary session data
+session/
+*.session
+
+# Cache for dynamic content
+.cache/
+previews/
+
+# Backup files
+*.bak
+backup/
+*.backup
+
+# ========== DOCUMENTATION ==========
+# Generated documentation
+docs/_build/
+docs/_static/
+docs/_templates/
+
+# ========== BUILD ARTIFACTS ==========
+# If you add build steps
+*.min.js
+*.min.css
+*.bundle.js
+*.map
+
+# ========== VIRTUAL ENVIRONMENTS ==========
+# Python virtual environments
+venv/
+ENV/
+env/
+
+# ========== DATABASE ==========
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# ================================
+# END OF .gitignore
+# ================================
