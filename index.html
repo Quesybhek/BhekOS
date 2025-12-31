@@ -1,0 +1,2614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="BhekOS 6.0 - A modern web-based operating system">
+    <meta name="theme-color" content="#0078d4">
+    <title>BhekOS 6.0</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Apple Touch Icon -->
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="icons/icon-192.png">
+    
+    <style>
+        :root {
+            --mica: rgba(20,20,20,0.85);
+            --mica-light: rgba(255,255,255,0.08);
+            --mica-border: rgba(255,255,255,0.15);
+            --accent: #0078d4;
+            --accent-hover: #1081dd;
+            --font: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+            --glass: blur(45px) saturate(210%) brightness(110%);
+            --taskbar-height: 48px;
+            --titlebar-height: 40px;
+            --accent-rgb: 0, 120, 212;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body, html { 
+            height: 100%; 
+            font-family: var(--font); 
+            overflow: hidden; 
+            background: #000; 
+            color: white; 
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+        
+        #desktop { 
+            width: 100vw; 
+            height: 100vh; 
+            position: relative; 
+            background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.9)), 
+                        url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=2564&q=80') center/cover fixed; 
+        }
+        
+        /* Windows */
+        .window { 
+            position: absolute; 
+            background: var(--mica); 
+            backdrop-filter: var(--glass); 
+            border: 1px solid var(--mica-border); 
+            border-radius: 12px; 
+            box-shadow: 0 25px 60px rgba(0,0,0,0.6), 0 2px 6px rgba(0,0,0,0.2); 
+            display: flex; 
+            flex-direction: column; 
+            transform: translateZ(0); 
+            animation: win-enter 0.3s cubic-bezier(0.1,0.9,0.2,1); 
+            min-width: 300px; 
+            min-height: 200px; 
+        }
+        
+        @keyframes win-enter { 
+            from { opacity: 0; transform: scale(0.9) translateY(20px); } 
+        }
+        
+        .titlebar { 
+            height: var(--titlebar-height); 
+            padding: 0 12px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            cursor: move; 
+            font-size: 13px; 
+            font-weight: 500; 
+            background: rgba(0,0,0,0.3); 
+            border-bottom: 1px solid var(--mica-border); 
+            border-radius: 12px 12px 0 0; 
+        }
+        
+        .titlebar-controls { display: flex; gap: 8px; }
+        .titlebar-controls span { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; }
+        .minimize { background: #f5b642; }
+        .maximize { background: #35cd4b; }
+        .close { background: #ed5f5d; }
+        .view { flex: 1; padding: 16px; background: rgba(0,0,0,0.25); overflow: auto; border-radius: 0 0 12px 12px; }
+        
+        /* Taskbar */
+        .taskbar { 
+            position: absolute; 
+            bottom: 0; 
+            left: 0; 
+            width: 100%; 
+            height: var(--taskbar-height); 
+            background: var(--mica); 
+            backdrop-filter: var(--glass); 
+            border-top: 1px solid var(--mica-border); 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 0 16px; 
+            z-index: 1000; 
+        }
+        
+        .taskbar-center { display: flex; gap: 2px; }
+        .taskbar-right { display: flex; align-items: center; gap: 16px; }
+        
+        .taskbar-icon { 
+            width: 36px; 
+            height: 36px; 
+            border-radius: 6px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 18px; 
+            cursor: pointer; 
+            transition: 0.2s; 
+            position: relative; 
+        }
+        
+        .taskbar-icon:hover { background: rgba(255,255,255,0.1); }
+        .taskbar-icon.active { background: rgba(255,255,255,0.15); }
+        .taskbar-icon.active::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 20px; height: 2px; background: var(--accent); border-radius: 1px; }
+        
+        .system-tray { display: flex; gap: 8px; align-items: center; font-size: 12px; }
+        .system-tray .icon { padding: 4px; cursor: pointer; border-radius: 4px; }
+        .system-tray .icon:hover { background: rgba(255,255,255,0.1); }
+        
+        /* Start Menu */
+        #startMenu { 
+            position: absolute; 
+            bottom: var(--taskbar-height); 
+            left: 0; 
+            width: 420px; 
+            height: 600px; 
+            background: var(--mica); 
+            backdrop-filter: var(--glass); 
+            border: 1px solid var(--mica-border); 
+            border-radius: 12px 12px 0 0; 
+            display: none; 
+            flex-direction: column; 
+            z-index: 9999; 
+            overflow: hidden; 
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.4); 
+        }
+        
+        .start-menu-header { padding: 32px; background: linear-gradient(135deg, rgba(var(--accent-rgb),0.2), rgba(0,0,0,0.3)); border-bottom: 1px solid var(--mica-border); }
+        .start-menu-header h2 { font-size: 28px; font-weight: 300; margin-bottom: 8px; }
+        .start-menu-header p { opacity: 0.8; font-size: 14px; }
+        .start-menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 20px; }
+        
+        .start-menu-item { 
+            padding: 16px; 
+            background: rgba(255,255,255,0.05); 
+            border-radius: 8px; 
+            cursor: pointer; 
+            transition: 0.2s; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            text-align: center; 
+        }
+        
+        .start-menu-item:hover { background: rgba(255,255,255,0.1); transform: translateY(-2px); }
+        .start-menu-item .emoji { font-size: 32px; margin-bottom: 8px; }
+        
+        /* Desktop Icons */
+        .desktop-icons { position: absolute; top: 20px; left: 20px; display: flex; flex-direction: column; gap: 20px; }
+        
+        .desktop-icon { 
+            width: 80px; 
+            padding: 12px 8px; 
+            border-radius: 8px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            text-align: center; 
+            cursor: pointer; 
+            transition: 0.2s; 
+            font-size: 12px; 
+            user-select: none; 
+            position: absolute; 
+        }
+        
+        .desktop-icon:hover { background: rgba(255,255,255,0.1); }
+        .desktop-icon.selected { background: rgba(var(--accent-rgb), 0.3); }
+        
+        /* Context Menu */
+        .context-menu { 
+            position: absolute; 
+            background: var(--mica); 
+            backdrop-filter: var(--glass); 
+            border: 1px solid var(--mica-border); 
+            border-radius: 8px; 
+            padding: 6px; 
+            display: none; 
+            flex-direction: column; 
+            min-width: 180px; 
+            z-index: 10000; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3); 
+        }
+        
+        .context-menu-item { 
+            padding: 8px 12px; 
+            cursor: pointer; 
+            border-radius: 4px; 
+            font-size: 13px; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+        }
+        
+        .context-menu-item:hover { background: rgba(255,255,255,0.1); }
+        
+        /* Notification */
+        .notification { 
+            position: absolute; 
+            top: 20px; 
+            right: 20px; 
+            background: var(--mica); 
+            backdrop-filter: var(--glass); 
+            padding: 16px; 
+            margin-bottom: 10px; 
+            border-radius: 10px; 
+            border: 1px solid var(--mica-border); 
+            max-width: 300px; 
+            z-index: 10000; 
+            animation: slideIn 0.3s ease; 
+        }
+        
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeout { 0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+        .notification.fadeout { animation: fadeout 3s forwards; }
+        
+        /* UI Components */
+        button { 
+            background: var(--accent); 
+            color: #fff; 
+            border: none; 
+            padding: 8px 16px; 
+            cursor: pointer; 
+            border-radius: 6px; 
+            font-family: var(--font); 
+            font-size: 14px; 
+            transition: 0.2s; 
+        }
+        
+        button:hover { background: var(--accent-hover); transform: translateY(-1px); }
+        button.secondary { background: rgba(255,255,255,0.1); }
+        
+        input, select, textarea { 
+            background: rgba(255,255,255,0.1); 
+            border: 1px solid var(--mica-border); 
+            border-radius: 6px; 
+            padding: 8px 12px; 
+            color: white; 
+            font-family: var(--font); 
+            font-size: 14px; 
+        }
+        
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+        
+        /* File Explorer */
+        .file-explorer { display: flex; height: 100%; }
+        .sidebar { width: 200px; background: rgba(0,0,0,0.2); padding: 16px; border-right: 1px solid var(--mica-border); }
+        .sidebar-item { padding: 8px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .sidebar-item:hover { background: rgba(255,255,255,0.1); }
+        .sidebar-item.active { background: rgba(var(--accent-rgb), 0.2); }
+        .content { flex: 1; padding: 16px; }
+        .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; }
+        .file-item { padding: 12px; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; }
+        .file-item:hover { background: rgba(255,255,255,0.1); }
+        .file-item .icon { font-size: 32px; margin-bottom: 8px; }
+        
+        /* Terminal */
+        .terminal { background: rgba(0,0,0,0.8); color: #00ff00; font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 14px; padding: 16px; border-radius: 6px; height: 100%; overflow-y: auto; }
+        .terminal-input { display: flex; align-items: center; gap: 8px; }
+        .prompt { color: #00ffff; }
+        .cursor { animation: blink 1s infinite; }
+        @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+        
+        /* Settings */
+        .settings-grid { display: grid; grid-template-columns: 200px 1fr; gap: 24px; }
+        .settings-nav { display: flex; flex-direction: column; gap: 4px; }
+        .settings-nav-item { padding: 12px; border-radius: 6px; cursor: pointer; }
+        .settings-nav-item:hover { background: rgba(255,255,255,0.1); }
+        .settings-nav-item.active { background: rgba(var(--accent-rgb), 0.2); }
+        .settings-content { padding: 16px; }
+        
+        /* Games */
+        .game-card { background: rgba(255,255,255,0.05); border: 1px solid var(--mica-border); border-radius: 12px; padding: 20px; cursor: pointer; transition: transform 0.2s; text-align: center; }
+        .game-card:hover { transform: translateY(-5px); background: rgba(255,255,255,0.1); }
+        
+        /* Game Canvases */
+        .game-canvas { background: #111; border-radius: 8px; display: block; margin: 10px auto; border: 2px solid var(--mica-border); }
+        
+        /* Media Player */
+        .media-player { text-align: center; }
+        .media-controls { display: flex; justify-content: center; align-items: center; gap: 16px; margin: 20px 0; }
+        .progress-bar { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; margin: 20px 0; }
+        .progress { width: 30%; height: 100%; background: var(--accent); border-radius: 2px; }
+        
+        /* AI Chat */
+        .ai-chat { height: 300px; overflow-y: auto; background: rgba(0,0,0,0.8); padding: 16px; border-radius: 8px; margin-bottom: 16px; }
+        .ai-message { margin-bottom: 12px; padding: 8px 12px; border-radius: 8px; max-width: 80%; }
+        .ai-user { background: rgba(var(--accent-rgb), 0.3); margin-left: auto; }
+        .ai-bot { background: rgba(255,255,255,0.1); }
+        
+        /* Shutdown Screen */
+        #shutdown-screen { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100vw; 
+            height: 100vh; 
+            background: linear-gradient(135deg, #000428, #004e92); 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 99999; 
+            font-family: var(--font); 
+            color: white; 
+            animation: fadeIn 0.5s ease; 
+        }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .shutdown-options { display: flex; gap: 20px; margin-top: 40px; }
+        .shutdown-options button { padding: 12px 24px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; transition: transform 0.2s; min-width: 120px; }
+        .shutdown-options button:hover { transform: scale(1.05); }
+        
+        /* Lock Screen */
+        #lock-screen { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100vw; 
+            height: 100vh; 
+            background: linear-gradient(135deg, #000428, #004e92); 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 99998; 
+            font-family: var(--font); 
+            color: white; 
+        }
+        
+        /* Password Protection */
+        .password-prompt { 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            background: var(--mica); 
+            backdrop-filter: var(--glass); 
+            border: 1px solid var(--mica-border); 
+            border-radius: 12px; 
+            padding: 24px; 
+            z-index: 10001; 
+            min-width: 300px; 
+            text-align: center; 
+        }
+        
+        /* Apple-like Settings */
+        .apple-settings-item { padding: 15px; border-bottom: 1px solid var(--mica-border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s; }
+        .apple-settings-item:hover { background: rgba(255,255,255,0.05); }
+        .apple-settings-item:last-child { border-bottom: none; }
+        
+        .settings-toggle { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .settings-toggle input { opacity: 0; width: 0; height: 0; }
+        .settings-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.2); transition: .4s; border-radius: 24px; }
+        .settings-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .settings-slider { background-color: var(--accent); }
+        input:checked + .settings-slider:before { transform: translateX(20px); }
+        
+        /* Security Indicators */
+        .security-indicator { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
+        .security-high { background: #4CAF50; }
+        .security-medium { background: #FF9800; }
+        .security-low { background: #FF5252; }
+        
+        /* Install Prompt */
+        #install-prompt { 
+            position: fixed; 
+            bottom: 80px; 
+            right: 20px; 
+            background: var(--mica); 
+            backdrop-filter: var(--glass); 
+            border: 1px solid var(--mica-border); 
+            border-radius: 12px; 
+            padding: 16px; 
+            z-index: 10000; 
+            max-width: 300px; 
+            animation: slideIn 0.3s ease; 
+            display: none; 
+        }
+        
+        /* Mobile Optimizations */
+        @media (max-width: 768px) {
+            .window { 
+                width: 95vw !important; 
+                height: 80vh !important; 
+                left: 2.5vw !important; 
+                top: 10vh !important; 
+            }
+            
+            .taskbar { height: 56px; }
+            #startMenu { width: 100vw; height: 70vh; }
+            .desktop-icons { gap: 10px; }
+            .desktop-icon { width: 70px; }
+        }
+        
+        /* Game-specific styles */
+        .memory-card { 
+            width: 80px; 
+            height: 100px; 
+            background: rgba(var(--accent-rgb), 0.3); 
+            border-radius: 8px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 32px; 
+            cursor: pointer; 
+            transition: all 0.3s; 
+            transform-style: preserve-3d; 
+        }
+        
+        .memory-card.flipped { background: rgba(255,255,255,0.1); transform: rotateY(180deg); }
+        .memory-card.matched { background: rgba(76, 175, 80, 0.3); cursor: default; }
+        
+        /* 2048 Game */
+        .game-2048-grid { 
+            display: grid; 
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 10px; 
+            background: rgba(255,255,255,0.1); 
+            padding: 10px; 
+            border-radius: 8px; 
+            margin: 20px auto; 
+            max-width: 400px; 
+        }
+        
+        .tile { 
+            width: 80px; 
+            height: 80px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 24px; 
+            font-weight: bold; 
+            border-radius: 6px; 
+            color: white; 
+        }
+        
+        /* Puzzle Game */
+        .puzzle-container { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 4px; 
+            margin: 20px auto; 
+            max-width: 300px; 
+        }
+        
+        .puzzle-piece { 
+            width: 94px; 
+            height: 94px; 
+            background: rgba(var(--accent-rgb), 0.3); 
+            border-radius: 6px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 24px; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+        }
+        
+        .puzzle-piece.empty { background: transparent; cursor: default; }
+        
+        /* Tic Tac Toe */
+        .tic-tac-toe-grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 4px; 
+            background: rgba(255,255,255,0.1); 
+            padding: 4px; 
+            border-radius: 8px; 
+            margin: 20px auto; 
+            max-width: 300px; 
+        }
+        
+        .ttt-cell { 
+            width: 94px; 
+            height: 94px; 
+            background: rgba(0,0,0,0.3); 
+            border-radius: 6px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 36px; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+        }
+        
+        .ttt-cell:hover { background: rgba(255,255,255,0.1); }
+        
+        /* Install Instructions */
+        .install-instructions {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--mica);
+            backdrop-filter: var(--glass);
+            border: 1px solid var(--mica-border);
+            border-radius: 12px;
+            padding: 24px;
+            z-index: 10002;
+            max-width: 400px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="desktop" oncontextmenu="os.showContextMenu(event)">
+        <div class="desktop-icons" id="desktopIcons"></div>
+        
+        <div class="taskbar">
+            <div class="taskbar-icon" onclick="os.toggleStart()">
+                🟢
+            </div>
+            <div class="taskbar-center" id="runningApps"></div>
+            <div class="taskbar-right">
+                <div class="system-tray">
+                    <div class="icon" title="Wi-Fi">📶</div>
+                    <div class="icon" title="Volume">🔊</div>
+                    <div class="icon" title="Battery">🔋</div>
+                    <div id="clock" class="clock">00:00</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="startMenu"></div>
+        <div id="contextMenu" class="context-menu"></div>
+        <div id="shutdown-screen" style="display: none;"></div>
+        <div id="lock-screen" style="display: none;"></div>
+        <div id="install-prompt" style="display: none;"></div>
+        <div id="install-instructions" class="install-instructions"></div>
+    </div>
+
+    <script>
+        // ==================== BHEKOS 6.0 CORE ====================
+        const BHEKOS_VERSION = "6.0.0";
+        const BHEKOS_BUILD = "22000.556";
+        
+        class BhekOS {
+            constructor() {
+                this.procs = new Map();
+                this.zIdx = 1000;
+                this.selectedDesktopIcon = null;
+                this.wallpaper = localStorage.getItem('wallpaper') || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=2564&q=80';
+                this.autoLockTimer = null;
+                this.inactivityTimer = null;
+                this.deferredPrompt = null;
+                this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                
+                // Set wallpaper
+                document.getElementById('desktop').style.backgroundImage = 
+                    `linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.9)), url('${this.wallpaper}') center/cover fixed`;
+                
+                // Initialize systems
+                this.initIconSettingsIfNeeded();
+                this.initSecuritySettingsIfNeeded();
+                this.initStartMenu();
+                this.initDesktopIcons();
+                this.updateClock();
+                
+                // Set up intervals
+                setInterval(() => this.updateClock(), 1000);
+                this.resetAutoLockTimer();
+                this.resetInactivityTimer();
+                
+                // PWA Install Prompt
+                this.setupPWAInstall();
+                
+                // Show welcome notification
+                setTimeout(() => this.notify('BhekOS 6.0', 'System ready'), 1000);
+                
+                // Security notification
+                setTimeout(() => this.notify('Security', 'Password protection available in Settings'), 2000);
+                
+                // Prevent default context menu
+                document.addEventListener('contextmenu', e => e.preventDefault());
+                
+                // Set up inactivity monitoring
+                this.setupInactivityMonitoring();
+                
+                // Check if system should start locked
+                this.checkAutoLockOnStart();
+                
+                // Load PWA service worker
+                this.registerServiceWorker();
+                
+                // Show install prompt after 5 seconds
+                setTimeout(() => this.showInstallPrompt(), 5000);
+            }
+            
+            // ==================== CORE OS FUNCTIONS ====================
+            
+            initDesktopIcons() {
+                const icons = [
+                    { id: 'explorer', name: 'File Explorer', defaultEmoji: '📁', defaultColor: '#4CAF50' },
+                    { id: 'terminal', name: 'Terminal', defaultEmoji: '💻', defaultColor: '#2196F3' },
+                    { id: 'browser', name: 'Web Browser', defaultEmoji: '🌐', defaultColor: '#FF9800' },
+                    { id: 'media', name: 'Media Player', defaultEmoji: '🎵', defaultColor: '#9C27B0' },
+                    { id: 'settings', name: 'Settings', defaultEmoji: '⚙️', defaultColor: '#607D8B' },
+                    { id: 'games', name: 'Game Center', defaultEmoji: '🎮', defaultColor: '#E91E63' },
+                    { id: 'ai', name: 'BhekAI', defaultEmoji: '🤖', defaultColor: '#00BCD4' },
+                    { id: 'notepad', name: 'Notepad', defaultEmoji: '📝', defaultColor: '#009688' },
+                    { id: 'calculator', name: 'Calculator', defaultEmoji: '🧮', defaultColor: '#FF5722' },
+                    { id: 'paint', name: 'Paint', defaultEmoji: '🎨', defaultColor: '#8BC34A' }
+                ];
+                
+                const container = document.getElementById('desktopIcons');
+                container.innerHTML = '';
+                
+                const savedLayout = JSON.parse(localStorage.getItem('desktopLayout') || '{}');
+                const savedSettings = JSON.parse(localStorage.getItem('iconSettings') || '{}');
+                
+                icons.forEach((ic, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'desktop-icon';
+                    div.id = `desktop-${ic.id}`;
+                    
+                    const savedPos = savedLayout[ic.id];
+                    const gridX = 20 + (index % 3) * 100;
+                    const gridY = 20 + Math.floor(index / 3) * 100;
+                    
+                    div.style.position = 'absolute';
+                    div.style.left = (savedPos?.left || gridX) + 'px';
+                    div.style.top = (savedPos?.top || gridY) + 'px';
+                    
+                    const settings = savedSettings[ic.id];
+                    const emoji = settings?.emoji || ic.defaultEmoji;
+                    const color = settings?.color || ic.defaultColor;
+                    const size = settings?.size || 32;
+                    const bgOpacity = settings?.bgOpacity || 20;
+                    
+                    const hexColor = color.startsWith('#') ? color : `#${color}`;
+                    const opacity = Math.round(bgOpacity * 2.55).toString(16).padStart(2, '0');
+                    const bgColor = `${hexColor}${opacity}`;
+                    
+                    div.innerHTML = `
+                        <div class="icon-emoji" style="
+                            font-size: ${size}px;
+                            width: 64px;
+                            height: 64px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            background: ${bgColor};
+                            border-radius: 12px;
+                            margin-bottom: 4px;
+                        ">${emoji}</div>
+                        <div class="icon-name" style="
+                            font-size: 12px;
+                            text-align: center;
+                            max-width: 80px;
+                            word-wrap: break-word;
+                            line-height: 1.2;
+                        ">${ic.name}</div>
+                    `;
+                    
+                    // Double-click to launch
+                    div.ondblclick = () => {
+                        if (this.requiresPasswordForApp(ic.id)) {
+                            this.showAppPasswordPrompt(ic.id, ic.name);
+                        } else {
+                            this.spawn(ic.name, ic.id);
+                        }
+                    };
+                    
+                    // Single click to select
+                    div.onclick = (e) => {
+                        e.stopPropagation();
+                        this.selectDesktopIcon(ic.id);
+                    };
+                    
+                    // Right-click context menu
+                    div.oncontextmenu = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.showDesktopContextMenu(e, ic);
+                    };
+                    
+                    // Drag functionality
+                    let isDragging = false;
+                    let startX, startY, startLeft, startTop;
+                    
+                    div.onmousedown = (e) => {
+                        if (e.button !== 0) return;
+                        if (e.detail > 1) return;
+                        
+                        this.selectDesktopIcon(ic.id);
+                        
+                        isDragging = true;
+                        startX = e.clientX;
+                        startY = e.clientY;
+                        startLeft = parseInt(div.style.left) || gridX;
+                        startTop = parseInt(div.style.top) || gridY;
+                        
+                        div.style.zIndex = '1000';
+                        div.style.opacity = '0.8';
+                        
+                        const onMouseMove = (moveEvent) => {
+                            if (!isDragging) return;
+                            
+                            const dx = moveEvent.clientX - startX;
+                            const dy = moveEvent.clientY - startY;
+                            
+                            div.style.left = (startLeft + dx) + 'px';
+                            div.style.top = (startTop + dy) + 'px';
+                        };
+                        
+                        const onMouseUp = () => {
+                            isDragging = false;
+                            div.style.zIndex = '';
+                            div.style.opacity = '';
+                            
+                            const left = parseInt(div.style.left);
+                            const top = parseInt(div.style.top);
+                            
+                            div.style.left = Math.round(left / 20) * 20 + 'px';
+                            div.style.top = Math.round(top / 20) * 20 + 'px';
+                            
+                            this.saveDesktopIconPosition(ic.id, div.style.left, div.style.top);
+                            
+                            document.removeEventListener('mousemove', onMouseMove);
+                            document.removeEventListener('mouseup', onMouseUp);
+                        };
+                        
+                        document.addEventListener('mousemove', onMouseMove);
+                        document.addEventListener('mouseup', onMouseUp, { once: true });
+                    };
+                    
+                    container.appendChild(div);
+                });
+            }
+            
+            initStartMenu() {
+                const menu = document.getElementById('startMenu');
+                const apps = [
+                    { name: 'File Explorer', emoji: '📁', type: 'explorer' },
+                    { name: 'Terminal', emoji: '💻', type: 'terminal' },
+                    { name: 'Web Browser', emoji: '🌐', type: 'browser' },
+                    { name: 'Media Player', emoji: '🎵', type: 'media' },
+                    { name: 'Settings', emoji: '⚙️', type: 'settings' },
+                    { name: 'Game Center', emoji: '🎮', type: 'games' },
+                    { name: 'BhekAI', emoji: '🤖', type: 'ai' },
+                    { name: 'Notepad', emoji: '📝', type: 'notepad' },
+                    { name: 'Calculator', emoji: '🧮', type: 'calculator' },
+                    { name: 'Paint', emoji: '🎨', type: 'paint' }
+                ];
+                
+                const savedSettings = JSON.parse(localStorage.getItem('iconSettings') || '{}');
+                
+                menu.innerHTML = `
+                    <div class="start-menu-header">
+                        <h2>BhekOS ${BHEKOS_VERSION}</h2>
+                        <p>Professional Edition • Build ${BHEKOS_BUILD}</p>
+                    </div>
+                    <div class="start-menu-grid">
+                        ${apps.map(app => {
+                            const settings = savedSettings[app.type];
+                            const emoji = settings?.emoji || app.emoji;
+                            const color = settings?.color || '#0078d4';
+                            const bgOpacity = settings?.bgOpacity || 20;
+                            
+                            const opacity = Math.round(bgOpacity * 2.55).toString(16).padStart(2, '0');
+                            const bgColor = `${color}${opacity}`;
+                            
+                            return `
+                                <div class="start-menu-item" onclick="os.spawn('${app.name}', '${app.type}'); os.toggleStart()">
+                                    <div class="emoji" style="
+                                        font-size: 32px;
+                                        width: 48px;
+                                        height: 48px;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        background: ${bgColor};
+                                        border-radius: 10px;
+                                        margin-bottom: 8px;
+                                    ">${emoji}</div>
+                                    <div>${app.name}</div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    <div style="margin-top: auto; padding: 20px; background: rgba(0,0,0,0.2); border-top: 1px solid var(--mica-border);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: 500;">Administrator</div>
+                                <div style="font-size: 12px; opacity: 0.8;">BhekOS User</div>
+                            </div>
+                            <button class="secondary" onclick="os.shutdown()">⏻ Power</button>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // ==================== WINDOW MANAGEMENT ====================
+            
+            spawn(name, type) {
+                const pid = 'PID_' + Math.random().toString(36).substr(2, 8).toUpperCase();
+                const win = document.createElement('div');
+                win.className = 'window';
+                win.id = pid;
+                
+                const left = 100 + (this.procs.size % 5) * 30;
+                const top = 50 + (this.procs.size % 5) * 30;
+                
+                win.style.width = this.isMobile ? '95vw' : '600px';
+                win.style.height = this.isMobile ? '70vh' : '500px';
+                win.style.left = `${left}px`;
+                win.style.top = `${top}px`;
+                win.style.zIndex = ++this.zIdx;
+                
+                win.innerHTML = `
+                    <div class="titlebar" onmousedown="os.focus('${pid}'); os.startDrag(event,'${pid}')">
+                        <span>${name}</span>
+                        <div class="titlebar-controls">
+                            <span class="minimize" onclick="os.minimize('${pid}')"></span>
+                            <span class="maximize" onclick="os.maximize('${pid}')"></span>
+                            <span class="close" onclick="os.kill('${pid}')"></span>
+                        </div>
+                    </div>
+                    <div class="view" id="view-${pid}"></div>
+                `;
+                
+                document.getElementById('desktop').appendChild(win);
+                this.procs.set(pid, { win, type, name });
+                this.addTaskbar(pid, name);
+                this.loadApp(pid, type);
+                this.focus(pid);
+                this.notify('Application Launched', `${name} is now running`);
+            }
+            
+            addTaskbar(pid, name) {
+                const bar = document.getElementById('runningApps');
+                const btn = document.createElement('div');
+                btn.className = 'taskbar-icon';
+                btn.id = 'task-' + pid;
+                
+                const appId = this.procs.get(pid)?.type;
+                const savedSettings = JSON.parse(localStorage.getItem('iconSettings') || '{}');
+                const settings = savedSettings[appId];
+                
+                let iconContent = this.getAppIcon(name);
+                if (settings?.emoji) iconContent = settings.emoji;
+                
+                btn.innerHTML = iconContent;
+                btn.title = name;
+                btn.onclick = () => {
+                    const proc = this.procs.get(pid);
+                    if (proc) {
+                        this.focus(pid);
+                        if (proc.win.style.display === 'none') {
+                            proc.win.style.display = 'flex';
+                        }
+                    }
+                };
+                
+                btn.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.showTaskbarContextMenu(e, pid);
+                };
+                
+                bar.appendChild(btn);
+                return btn;
+            }
+            
+            focus(pid) {
+                const proc = this.procs.get(pid);
+                if (proc) {
+                    proc.win.style.zIndex = ++this.zIdx;
+                    
+                    document.querySelectorAll('.taskbar-icon').forEach(el => {
+                        el.classList.remove('active');
+                    });
+                    const taskBtn = document.getElementById('task-' + pid);
+                    if (taskBtn) taskBtn.classList.add('active');
+                    
+                    document.getElementById('desktop').appendChild(proc.win);
+                }
+            }
+            
+            startDrag(e, pid) {
+                const proc = this.procs.get(pid);
+                if (!proc) return;
+                
+                const win = proc.win;
+                const startX = e.clientX;
+                const startY = e.clientY;
+                const startLeft = parseInt(win.style.left) || 100;
+                const startTop = parseInt(win.style.top) || 100;
+                
+                const onMouseMove = (moveEvent) => {
+                    const dx = moveEvent.clientX - startX;
+                    const dy = moveEvent.clientY - startY;
+                    win.style.left = (startLeft + dx) + 'px';
+                    win.style.top = (startTop + dy) + 'px';
+                };
+                
+                const onMouseUp = () => {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+                
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp, { once: true });
+                
+                this.focus(pid);
+            }
+            
+            minimize(pid) {
+                const proc = this.procs.get(pid);
+                if (proc) {
+                    proc.win.style.display = 'none';
+                    const taskBtn = document.getElementById('task-' + pid);
+                    if (taskBtn) taskBtn.classList.remove('active');
+                }
+            }
+            
+            maximize(pid) {
+                const proc = this.procs.get(pid);
+                if (proc) {
+                    const win = proc.win;
+                    if (win.style.width === '100vw' && win.style.height === '100vh') {
+                        win.style.width = this.isMobile ? '95vw' : '600px';
+                        win.style.height = this.isMobile ? '70vh' : '500px';
+                        win.style.left = '100px';
+                        win.style.top = '50px';
+                        win.style.borderRadius = '12px';
+                    } else {
+                        win.style.width = '100vw';
+                        win.style.height = '100vh';
+                        win.style.left = '0';
+                        win.style.top = '0';
+                        win.style.borderRadius = '0';
+                    }
+                }
+            }
+            
+            kill(pid) {
+                const proc = this.procs.get(pid);
+                if (proc) {
+                    proc.win.remove();
+                    this.procs.delete(pid);
+                    
+                    const taskBtn = document.getElementById('task-' + pid);
+                    if (taskBtn) taskBtn.remove();
+                    
+                    this.notify('Application Closed', `${proc.name} has been closed`);
+                }
+            }
+            
+            // ==================== APP LOADERS ====================
+            
+            loadApp(pid, type) {
+                const view = document.getElementById(`view-${pid}`);
+                if (!view) return;
+                
+                const proc = this.procs.get(pid);
+                
+                switch(type) {
+                    case 'explorer':
+                        this.loadFileExplorer(view);
+                        break;
+                    case 'terminal':
+                        this.loadTerminal(view);
+                        break;
+                    case 'browser':
+                        this.loadBrowser(view);
+                        break;
+                    case 'media':
+                        this.loadMediaPlayer(view);
+                        break;
+                    case 'settings':
+                        this.loadSettings(view);
+                        break;
+                    case 'games':
+                        this.loadGames(view);
+                        break;
+                    case 'ai':
+                        this.loadAIChat(view);
+                        break;
+                    case 'notepad':
+                        this.loadNotepad(view);
+                        break;
+                    case 'calculator':
+                        this.loadCalculator(view);
+                        break;
+                    case 'paint':
+                        this.loadPaint(view);
+                        break;
+                    default:
+                        view.innerHTML = `<h3>${proc?.name || 'App'}</h3><p>Application content would load here.</p>`;
+                }
+            }
+            
+            // ==================== GAMES ====================
+            
+            loadGames(view) {
+                view.innerHTML = `
+                    <div style="padding: 20px; height: 100%; overflow-y: auto;">
+                        <h2 style="margin-bottom: 20px;">🎮 Game Center</h2>
+                        <p style="margin-bottom: 20px; opacity: 0.8;">Select a game to play. All games feature password protection.</p>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-top: 20px;">
+                            <div class="game-card" onclick="os.launchGame('snake')">
+                                <div style="font-size: 48px; margin-bottom: 12px;">🐍</div>
+                                <h3 style="margin-bottom: 8px;">Snake</h3>
+                                <p style="font-size: 12px; opacity: 0.8;">Classic snake game</p>
+                            </div>
+                            
+                            <div class="game-card" onclick="os.launchGame('flappy')">
+                                <div style="font-size: 48px; margin-bottom: 12px;">🐦</div>
+                                <h3 style="margin-bottom: 8px;">Flappy Bird</h3>
+                                <p style="font-size: 12px; opacity: 0.8;">Fly through pipes</p>
+                            </div>
+                            
+                            <div class="game-card" onclick="os.launchGame('memory')">
+                                <div style="font-size: 48px; margin-bottom: 12px;">🧠</div>
+                                <h3 style="margin-bottom: 8px;">Memory Match</h3>
+                                <p style="font-size: 12px; opacity: 0.8;">Test your memory</p>
+                            </div>
+                            
+                            <div class="game-card" onclick="os.launchGame('2048')">
+                                <div style="font-size: 48px; margin-bottom: 12px;">🧮</div>
+                                <h3 style="margin-bottom: 8px;">2048</h3>
+                                <p style="font-size: 12px; opacity: 0.8;">Slide and combine numbers</p>
+                            </div>
+                            
+                            <div class="game-card" onclick="os.launchGame('puzzle')">
+                                <div style="font-size: 48px; margin-bottom: 12px;">🧩</div>
+                                <h3 style="margin-bottom: 8px;">Puzzle</h3>
+                                <p style="font-size: 12px; opacity: 0.8;">Slide puzzle game</p>
+                            </div>
+                            
+                            <div class="game-card" onclick="os.launchGame('tic-tac-toe')">
+                                <div style="font-size: 48px; margin-bottom: 12px;">⭕</div>
+                                <h3 style="margin-bottom: 8px;">Tic Tac Toe</h3>
+                                <p style="font-size: 12px; opacity: 0.8;">Play against AI</p>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 30px; padding: 16px; background: rgba(var(--accent-rgb), 0.1); border-radius: 8px;">
+                            <h4>🔐 Game Security</h4>
+                            <p style="font-size: 13px; margin-top: 8px;">All games are protected with BhekOS security features.</p>
+                            <label style="display: flex; align-items: center; gap: 8px; margin-top: 12px;">
+                                <input type="checkbox" id="game-passwords" onchange="os.toggleGamePasswords(this.checked)">
+                                Require password for games
+                            </label>
+                        </div>
+                        
+                        <div style="margin-top: 20px; font-size: 12px; opacity: 0.6; text-align: center;">
+                            High scores are encrypted and saved locally
+                        </div>
+                    </div>
+                `;
+            }
+            
+            launchGame(gameType) {
+                const security = JSON.parse(localStorage.getItem('securitySettings') || '{}');
+                if (security.requirePasswordForGames) {
+                    this.showGamePasswordPrompt(gameType);
+                    return;
+                }
+                
+                const gameNames = {
+                    'snake': 'Snake Game',
+                    'flappy': 'Flappy Bird',
+                    'memory': 'Memory Match',
+                    '2048': '2048',
+                    'puzzle': 'Puzzle Game',
+                    'tic-tac-toe': 'Tic Tac Toe'
+                };
+                
+                this.spawn(gameNames[gameType] || 'Game', 'games');
+                
+                setTimeout(() => {
+                    const view = document.querySelector('.window:last-child .view');
+                    if (view) {
+                        this.loadSpecificGame(gameType, view);
+                    }
+                }, 100);
+            }
+            
+            loadSpecificGame(gameType, view) {
+                switch(gameType) {
+                    case 'snake':
+                        this.loadSnakeGame(view);
+                        break;
+                    case 'flappy':
+                        this.loadFlappyBird(view);
+                        break;
+                    case 'memory':
+                        this.loadMemoryGame(view);
+                        break;
+                    case '2048':
+                        this.load2048Game(view);
+                        break;
+                    case 'puzzle':
+                        this.loadPuzzleGame(view);
+                        break;
+                    case 'tic-tac-toe':
+                        this.loadTicTacToe(view);
+                        break;
+                    default:
+                        view.innerHTML = `<p>Game not found</p>`;
+                }
+            }
+            
+            // ==================== SNAKE GAME ====================
+            
+            loadSnakeGame(view) {
+                view.innerHTML = `
+                    <div style="text-align: center; height: 100%; display: flex; flex-direction: column;">
+                        <h2>🐍 Snake Game</h2>
+                        <p style="margin-bottom: 16px;">Use arrow keys to control the snake. Eat food to grow!</p>
+                        
+                        <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 16px;">
+                            <div style="background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 6px;">
+                                <div style="font-size: 12px; opacity: 0.8;">Score</div>
+                                <div id="snake-score" style="font-size: 24px; font-weight: bold;">0</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 6px;">
+                                <div style="font-size: 12px; opacity: 0.8;">High Score</div>
+                                <div id="snake-high-score" style="font-size: 24px; font-weight: bold;">${localStorage.getItem('snakeHighScore') || 0}</div>
+                            </div>
+                        </div>
+                        
+                        <canvas id="snake-canvas" width="400" height="400" 
+                                class="game-canvas" 
+                                style="background: #111; cursor: pointer;"></canvas>
+                        
+                        <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: center;">
+                            <button onclick="os.startSnakeGame()">▶️ Start Game</button>
+                            <button onclick="os.pauseSnakeGame()" class="secondary">⏸️ Pause</button>
+                            <button onclick="os.resetSnakeGame()" class="secondary">🔄 Reset</button>
+                        </div>
+                        
+                        <div style="margin-top: 16px; font-size: 12px; opacity: 0.7;">
+                            <span class="security-indicator security-high"></span> Game data is encrypted and secure
+                        </div>
+                    </div>
+                `;
+                
+                setTimeout(() => this.initSnakeGame(), 100);
+            }
+            
+            initSnakeGame() {
+                const canvas = document.getElementById('snake-canvas');
+                if (!canvas) return;
+                
+                const ctx = canvas.getContext('2d');
+                const gridSize = 20;
+                const tileCount = canvas.width / gridSize;
+                
+                let snake = [{x: 10, y: 10}];
+                let food = {};
+                let dx = 0;
+                let dy = 0;
+                let score = 0;
+                let gameRunning = false;
+                let gameLoop;
+                
+                function randomFood() {
+                    food = {
+                        x: Math.floor(Math.random() * tileCount),
+                        y: Math.floor(Math.random() * tileCount)
+                    };
+                }
+                
+                function drawGame() {
+                    ctx.fillStyle = '#111';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.fillStyle = '#4CAF50';
+                    snake.forEach(segment => {
+                        ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
+                    });
+                    
+                    ctx.fillStyle = '#FF5252';
+                    ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 2, gridSize - 2);
+                    
+                    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+                    ctx.lineWidth = 1;
+                    for (let i = 0; i < tileCount; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(i * gridSize, 0);
+                        ctx.lineTo(i * gridSize, canvas.height);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(0, i * gridSize);
+                        ctx.lineTo(canvas.width, i * gridSize);
+                        ctx.stroke();
+                    }
+                }
+                
+                function updateGame() {
+                    if (!gameRunning) return;
+                    
+                    const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+                    
+                    if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+                        gameOver();
+                        return;
+                    }
+                    
+                    for (let segment of snake) {
+                        if (head.x === segment.x && head.y === segment.y) {
+                            gameOver();
+                            return;
+                        }
+                    }
+                    
+                    snake.unshift(head);
+                    
+                    if (head.x === food.x && head.y === food.y) {
+                        score += 10;
+                        document.getElementById('snake-score').textContent = score;
+                        randomFood();
+                    } else {
+                        snake.pop();
+                    }
+                    
+                    drawGame();
+                }
+                
+                function gameOver() {
+                    gameRunning = false;
+                    clearInterval(gameLoop);
+                    
+                    const highScore = parseInt(localStorage.getItem('snakeHighScore') || 0);
+                    if (score > highScore) {
+                        localStorage.setItem('snakeHighScore', score.toString());
+                        document.getElementById('snake-high-score').textContent = score;
+                        os.notify('Snake Game', `New High Score: ${score}!`);
+                    }
+                    
+                    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.fillStyle = 'white';
+                    ctx.font = '30px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Game Over!', canvas.width/2, canvas.height/2 - 20);
+                    ctx.font = '20px Arial';
+                    ctx.fillText(`Score: ${score}`, canvas.width/2, canvas.height/2 + 20);
+                    ctx.fillText('Click Start to play again', canvas.width/2, canvas.height/2 + 50);
+                }
+                
+                window.os.startSnakeGame = function() {
+                    if (gameRunning) return;
+                    gameRunning = true;
+                    score = 0;
+                    document.getElementById('snake-score').textContent = '0';
+                    snake = [{x: 10, y: 10}];
+                    dx = 1;
+                    dy = 0;
+                    randomFood();
+                    drawGame();
+                    
+                    gameLoop = setInterval(updateGame, 150);
+                };
+                
+                window.os.pauseSnakeGame = function() {
+                    gameRunning = !gameRunning;
+                    if (gameRunning) {
+                        gameLoop = setInterval(updateGame, 150);
+                    } else {
+                        clearInterval(gameLoop);
+                    }
+                };
+                
+                window.os.resetSnakeGame = function() {
+                    gameRunning = false;
+                    clearInterval(gameLoop);
+                    score = 0;
+                    document.getElementById('snake-score').textContent = '0';
+                    snake = [{x: 10, y: 10}];
+                    dx = 0;
+                    dy = 0;
+                    drawGame();
+                };
+                
+                document.addEventListener('keydown', (e) => {
+                    if (!gameRunning) return;
+                    
+                    switch(e.key) {
+                        case 'ArrowUp':
+                            if (dy !== 1) { dx = 0; dy = -1; }
+                            break;
+                        case 'ArrowDown':
+                            if (dy !== -1) { dx = 0; dy = 1; }
+                            break;
+                        case 'ArrowLeft':
+                            if (dx !== 1) { dx = -1; dy = 0; }
+                            break;
+                        case 'ArrowRight':
+                            if (dx !== -1) { dx = 1; dy = 0; }
+                            break;
+                    }
+                });
+                
+                randomFood();
+                drawGame();
+            }
+            
+            // ==================== FLAPPY BIRD ====================
+            
+            loadFlappyBird(view) {
+                view.innerHTML = `
+                    <div style="text-align: center; height: 100%; display: flex; flex-direction: column;">
+                        <h2>🐦 Flappy Bird</h2>
+                        <p style="margin-bottom: 16px;">Click or press Space to flap. Avoid the pipes!</p>
+                        
+                        <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 16px;">
+                            <div style="background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 6px;">
+                                <div style="font-size: 12px; opacity: 0.8;">Score</div>
+                                <div id="flappy-score" style="font-size: 24px; font-weight: bold;">0</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 6px;">
+                                <div style="font-size: 12px; opacity: 0.8;">High Score</div>
+                                <div id="flappy-high-score" style="font-size: 24px; font-weight: bold;">${localStorage.getItem('flappyHighScore') || 0}</div>
+                            </div>
+                        </div>
+                        
+                        <canvas id="flappy-canvas" width="400" height="500" 
+                                class="game-canvas" 
+                                style="background: #87CEEB; cursor: pointer;"></canvas>
+                        
+                        <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: center;">
+                            <button onclick="os.startFlappyGame()">▶️ Start Game</button>
+                            <button onclick="os.resetFlappyGame()" class="secondary">🔄 Reset</button>
+                        </div>
+                        
+                        <div style="margin-top: 16px; font-size: 12px; opacity: 0.7;">
+                            <span class="security-indicator security-high"></span> Protected game session
+                        </div>
+                    </div>
+                `;
+                
+                setTimeout(() => this.initFlappyBird(), 100);
+            }
+            
+            initFlappyBird() {
+                const canvas = document.getElementById('flappy-canvas');
+                if (!canvas) return;
+                
+                const ctx = canvas.getContext('2d');
+                let bird = { x: 50, y: 250, radius: 15, velocity: 0, gravity: 0.5, jump: -10 };
+                let pipes = [];
+                let score = 0;
+                let gameRunning = false;
+                let gameLoop;
+                let pipeGap = 150;
+                let pipeWidth = 60;
+                let pipeSpeed = 3;
+                
+                function drawBird() {
+                    ctx.fillStyle = '#FFD700';
+                    ctx.beginPath();
+                    ctx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.fillStyle = 'black';
+                    ctx.beginPath();
+                    ctx.arc(bird.x + 5, bird.y - 5, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#FF8C00';
+                    ctx.beginPath();
+                    ctx.moveTo(bird.x + 15, bird.y);
+                    ctx.lineTo(bird.x + 25, bird.y - 5);
+                    ctx.lineTo(bird.x + 25, bird.y + 5);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                
+                function drawPipes() {
+                    ctx.fillStyle = '#2E8B57';
+                    for (let pipe of pipes) {
+                        ctx.fillRect(pipe.x, 0, pipeWidth, pipe.topHeight);
+                        ctx.fillRect(pipe.x, canvas.height - pipe.bottomHeight, pipeWidth, pipe.bottomHeight);
+                        
+                        ctx.fillStyle = '#228B22';
+                        ctx.fillRect(pipe.x - 5, pipe.topHeight - 20, pipeWidth + 10, 20);
+                        ctx.fillRect(pipe.x - 5, canvas.height - pipe.bottomHeight, pipeWidth + 10, 20);
+                        ctx.fillStyle = '#2E8B57';
+                    }
+                }
+                
+                function drawBackground() {
+                    ctx.fillStyle = '#87CEEB';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.fillStyle = '#8B4513';
+                    ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+                    
+                    ctx.fillStyle = '#7CFC00';
+                    ctx.fillRect(0, canvas.height - 50, canvas.width, 10);
+                }
+                
+                function updateGame() {
+                    if (!gameRunning) return;
+                    
+                    bird.velocity += bird.gravity;
+                    bird.y += bird.velocity;
+                    
+                    for (let i = pipes.length - 1; i >= 0; i--) {
+                        pipes[i].x -= pipeSpeed;
+                        
+                        if (pipes[i].x + pipeWidth < bird.x && !pipes[i].scored) {
+                            pipes[i].scored = true;
+                            score++;
+                            document.getElementById('flappy-score').textContent = score;
+                            pipeSpeed += 0.05;
+                        }
+                        
+                        if (pipes[i].x < -pipeWidth) {
+                            pipes.splice(i, 1);
+                        }
+                    }
+                    
+                    if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - 200) {
+                        const topHeight = Math.floor(Math.random() * (canvas.height - pipeGap - 100)) + 50;
+                        pipes.push({
+                            x: canvas.width,
+                            topHeight: topHeight,
+                            bottomHeight: canvas.height - topHeight - pipeGap - 50,
+                            scored: false
+                        });
+                    }
+                    
+                    if (bird.y - bird.radius <= 0 || bird.y + bird.radius >= canvas.height - 50) {
+                        gameOver();
+                        return;
+                    }
+                    
+                    for (let pipe of pipes) {
+                        if (bird.x + bird.radius > pipe.x && bird.x - bird.radius < pipe.x + pipeWidth) {
+                            if (bird.y - bird.radius < pipe.topHeight || 
+                                bird.y + bird.radius > canvas.height - pipe.bottomHeight - 50) {
+                                gameOver();
+                                return;
+                            }
+                        }
+                    }
+                    
+                    drawBackground();
+                    drawPipes();
+                    drawBird();
+                    
+                    ctx.fillStyle = 'white';
+                    ctx.font = '24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`Score: ${score}`, canvas.width/2, 40);
+                }
+                
+                function gameOver() {
+                    gameRunning = false;
+                    clearInterval(gameLoop);
+                    
+                    const highScore = parseInt(localStorage.getItem('flappyHighScore') || 0);
+                    if (score > highScore) {
+                        localStorage.setItem('flappyHighScore', score.toString());
+                        document.getElementById('flappy-high-score').textContent = score;
+                        os.notify('Flappy Bird', `New High Score: ${score}!`);
+                    }
+                    
+                    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.fillStyle = 'white';
+                    ctx.font = '30px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Game Over!', canvas.width/2, canvas.height/2 - 20);
+                    ctx.font = '20px Arial';
+                    ctx.fillText(`Score: ${score}`, canvas.width/2, canvas.height/2 + 20);
+                    ctx.fillText('Click Start to play again', canvas.width/2, canvas.height/2 + 50);
+                }
+                
+                window.os.startFlappyGame = function() {
+                    if (gameRunning) return;
+                    gameRunning = true;
+                    score = 0;
+                    document.getElementById('flappy-score').textContent = '0';
+                    bird = { x: 50, y: 250, radius: 15, velocity: 0, gravity: 0.5, jump: -10 };
+                    pipes = [];
+                    pipeSpeed = 3;
+                    
+                    drawBackground();
+                    drawBird();
+                    
+                    gameLoop = setInterval(updateGame, 1000/60);
+                };
+                
+                window.os.resetFlappyGame = function() {
+                    gameRunning = false;
+                    clearInterval(gameLoop);
+                    score = 0;
+                    document.getElementById('flappy-score').textContent = '0';
+                    bird = { x: 50, y: 250, radius: 15, velocity: 0, gravity: 0.5, jump: -10 };
+                    pipes = [];
+                    drawBackground();
+                    drawBird();
+                };
+                
+                canvas.addEventListener('click', () => {
+                    if (gameRunning) {
+                        bird.velocity = bird.jump;
+                    }
+                });
+                
+                document.addEventListener('keydown', (e) => {
+                    if (e.code === 'Space' && gameRunning) {
+                        bird.velocity = bird.jump;
+                    }
+                });
+                
+                drawBackground();
+                drawBird();
+            }
+            
+            // ==================== MEMORY GAME ====================
+            
+            loadMemoryGame(view) {
+                view.innerHTML = `
+                    <div style="text-align: center; height: 100%; display: flex; flex-direction: column;">
+                        <h2>🧠 Memory Match</h2>
+                        <p style="margin-bottom: 16px;">Click cards to find matching pairs. Remember their positions!</p>
+                        
+                        <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 16px;">
+                            <div style="background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 6px;">
+                                <div style="font-size: 12px; opacity: 0.8;">Moves</div>
+                                <div id="memory-moves" style="font-size: 24px; font-weight: bold;">0</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 6px;">
+                                <div style="font-size: 12px; opacity: 0.8;">Matches</div>
+                                <div id="memory-matches" style="font-size: 24px; font-weight: bold;">0/8</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 6px;">
+                                <div style="font-size: 12px; opacity: 0.8;">Time</div>
+                                <div id="memory-time" style="font-size: 24px; font-weight: bold;">0s</div>
+                            </div>
+                        </div>
+                        
+                        <div id="memory-grid" style="
+                            display: grid;
+                            grid-template-columns: repeat(4, 1fr);
+                            gap: 10px;
+                            max-width: 420px;
+                            margin: 0 auto;
+                        "></div>
+                        
+                        <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
+                            <button onclick="os.startMemoryGame()">🔄 New Game</button>
+                            <button onclick="os.showMemorySolution()" class="secondary">💡 Show Solution</button>
+                        </div>
+                        
+                        <div style="margin-top: 16px; font-size: 12px; opacity: 0.7;">
+                            <span class="security-indicator security-medium"></span> Memory scores are encrypted
+                        </div>
+                    </div>
+                `;
+                
+                setTimeout(() => this.initMemoryGame(), 100);
+            }
+            
+            initMemoryGame() {
+                const grid = document.getElementById('memory-grid');
+                if (!grid) return;
+                
+                const emojis = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼'];
+                let cards = [...emojis, ...emojis];
+                let flippedCards = [];
+                let matchedCards = [];
+                let moves = 0;
+                let startTime = null;
+                let timerInterval = null;
+                let gameActive = false;
+                
+                function shuffle(array) {
+                    for (let i = array.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [array[i], array[j]] = [array[j], array[i]];
+                    }
+                    return array;
+                }
+                
+                function createCard(emoji, index) {
+                    const card = document.createElement('div');
+                    card.className = 'memory-card';
+                    card.dataset.index = index;
+                    card.dataset.emoji = emoji;
+                    
+                    card.innerHTML = `
+                        <div class="card-front" style="display: none;">${emoji}</div>
+                        <div class="card-back" style="font-size: 24px;">❓</div>
+                    `;
+                    
+                    card.onclick = () => {
+                        if (!gameActive || flippedCards.length >= 2 || card.classList.contains('flipped') || card.classList.contains('matched')) {
+                            return;
+                        }
+                        
+                        card.classList.add('flipped');
+                        card.querySelector('.card-front').style.display = 'block';
+                        card.querySelector('.card-back').style.display = 'none';
+                        
+                        flippedCards.push(card);
+                        
+                        if (flippedCards.length === 2) {
+                            moves++;
+                            document.getElementById('memory-moves').textContent = moves;
+                            
+                            const [card1, card2] = flippedCards;
+                            if (card1.dataset.emoji === card2.dataset.emoji) {
+                                card1.classList.add('matched');
+                                card2.classList.add('matched');
+                                matchedCards.push(card1, card2);
+                                
+                                document.getElementById('memory-matches').textContent = `${matchedCards.length/2}/8`;
+                                
+                                if (matchedCards.length === 16) {
+                                    gameOver();
+                                }
+                            } else {
+                                setTimeout(() => {
+                                    card1.classList.remove('flipped');
+                                    card2.classList.remove('flipped');
+                                    card1.querySelector('.card-front').style.display = 'none';
+                                    card1.querySelector('.card-back').style.display = 'block';
+                                    card2.querySelector('.card-front').style.display = 'none';
+                                    card2.querySelector('.card-back').style.display = 'block';
+                                }, 1000);
+                            }
+                            
+                            flippedCards = [];
+                        }
+                    };
+                    
+                    return card;
+                }
+                
+                function startTimer() {
+                    startTime = Date.now();
+                    timerInterval = setInterval(() => {
+                        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                        document.getElementById('memory-time').textContent = `${elapsed}s`;
+                    }, 1000);
+                }
+                
+                function gameOver() {
+                    gameActive = false;
+                    clearInterval(timerInterval);
+                    
+                    const time = Math.floor((Date.now() - startTime) / 1000);
+                    const highScoreData = JSON.parse(localStorage.getItem('memoryHighScores') || '[]');
+                    
+                    highScoreData.push({
+                        moves: moves,
+                        time: time,
+                        date: new Date().toLocaleDateString()
+                    });
+                    
+                    highScoreData.sort((a, b) => a.moves - b.moves || a.time - b.time);
+                    if (highScoreData.length > 10) highScoreData.length = 10;
+                    
+                    localStorage.setItem('memoryHighScores', JSON.stringify(highScoreData));
+                    
+                    os.notify('Memory Game', `You won in ${moves} moves and ${time} seconds!`);
+                }
+                
+                window.os.startMemoryGame = function() {
+                    grid.innerHTML = '';
+                    cards = shuffle([...emojis, ...emojis]);
+                    flippedCards = [];
+                    matchedCards = [];
+                    moves = 0;
+                    gameActive = true;
+                    
+                    document.getElementById('memory-moves').textContent = '0';
+                    document.getElementById('memory-matches').textContent = '0/8';
+                    document.getElementById('memory-time').textContent = '0s';
+                    
+                    clearInterval(timerInterval);
+                    startTimer();
+                    
+                    cards.forEach((emoji, index) => {
+                        grid.appendChild(createCard(emoji, index));
+                    });
+                };
+                
+                window.os.showMemorySolution = function() {
+                    document.querySelectorAll('.memory-card').forEach(card => {
+                        card.classList.add('flipped');
+                        card.querySelector('.card-front').style.display = 'block';
+                        card.querySelector('.card-back').style.display = 'none';
+                    });
+                };
+                
+                os.startMemoryGame();
+            }
+            
+            // ==================== 2048 GAME ====================
+            
+            load2048Game(view) {
+                view.innerHTML = `
+                    <div style="text-align: center; height: 100%; display: flex; flex-direction: column;">
+                        <h2>🧮 2048</h2>
+                        <p style="margin-bottom: 16px;">Use arrow keys to slide tiles. Combine identical tiles!</p>
+                        
+                        <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 16px;">
+                            <div style="background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 6px;">
+                                <div style="font-size: 12px; opacity: 0.8;">Score</div>
+                                <div id="game2048-score" style="font-size: 24px; font-weight: bold;">0</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 6px;">
+                                <div style="font-size: 12px; opacity: 0.8;">Best</div>
+                                <div id="game2048-best" style="font-size: 24px; font-weight: bold;">${localStorage.getItem('2048BestScore') || 0}</div>
+                            </div>
+                        </div>
+                        
+                        <div id="game2048-grid" class="game-2048-grid"></div>
+                        
+                        <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
+                            <button onclick="os.start2048Game()">🔄 New Game</button>
+                            <button onclick="os.undo2048Move()" class="secondary">↩️ Undo</button>
+                        </div>
+                        
+                        <div style="margin-top: 16px; font-size: 12px; opacity: 0.7;">
+                            <span class="security-indicator security-high"></span> Game progress is encrypted
+                        </div>
+                    </div>
+                `;
+                
+                setTimeout(() => this.init2048Game(), 100);
+            }
+            
+            init2048Game() {
+                const gridElement = document.getElementById('game2048-grid');
+                if (!gridElement) return;
+                
+                let grid = Array(4).fill().map(() => Array(4).fill(0));
+                let score = 0;
+                let previousState = null;
+                
+                const tileColors = {
+                    0: {bg: 'rgba(255,255,255,0.1)', color: 'white'},
+                    2: {bg: '#EEE4DA', color: '#776E65'},
+                    4: {bg: '#EDE0C8', color: '#776E65'},
+                    8: {bg: '#F2B179', color: 'white'},
+                    16: {bg: '#F59563', color: 'white'},
+                    32: {bg: '#F67C5F', color: 'white'},
+                    64: {bg: '#F65E3B', color: 'white'},
+                    128: {bg: '#EDCF72', color: 'white'},
+                    256: {bg: '#EDCC61', color: 'white'},
+                    512: {bg: '#EDC850', color: 'white'},
+                    1024: {bg: '#EDC53F', color: 'white'},
+                    2048: {bg: '#EDC22E', color: 'white'}
+                };
+                
+                function getTileColor(value) {
+                    return tileColors[value] || {bg: '#3C3A32', color: 'white'};
+                }
+                
+                function renderGrid() {
+                    gridElement.innerHTML = '';
+                    
+                    for (let y = 0; y < 4; y++) {
+                        for (let x = 0; x < 4; x++) {
+                            const value = grid[y][x];
+                            const tile = document.createElement('div');
+                            tile.className = 'tile';
+                            tile.textContent = value === 0 ? '' : value;
+                            
+                            const colors = getTileColor(value);
+                            tile.style.background = colors.bg;
+                            tile.style.color = colors.color;
+                            tile.style.fontSize = value < 100 ? '24px' : value < 1000 ? '20px' : '16px';
+                            
+                            gridElement.appendChild(tile);
+                        }
+                    }
+                    
+                    document.getElementById('game2048-score').textContent = score;
+                }
+                
+                function addRandomTile() {
+                    const emptyCells = [];
+                    for (let y = 0; y < 4; y++) {
+                        for (let x = 0; x < 4; x++) {
+                            if (grid[y][x] === 0) {
+                                emptyCells.push({x, y});
+                            }
+                        }
+                    }
+                    
+                    if (emptyCells.length > 0) {
+                        const {x, y} = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                        grid[y][x] = Math.random() < 0.9 ? 2 : 4;
+                        return true;
+                    }
+                    return false;
+                }
+                
+                function saveState() {
+                    previousState = {
+                        grid: grid.map(row => [...row]),
+                        score: score
+                    };
+                }
+                
+                function move(direction) {
+                    saveState();
+                    
+                    let moved = false;
+                    const oldGrid = grid.map(row => [...row]);
+                    
+                    if (direction === 'left' || direction === 'right') {
+                        for (let y = 0; y < 4; y++) {
+                            let row = grid[y].filter(cell => cell !== 0);
+                            
+                            if (direction === 'right') row.reverse();
+                            
+                            for (let i = 0; i < row.length - 1; i++) {
+                                if (row[i] === row[i + 1]) {
+                                    row[i] *= 2;
+                                    score += row[i];
+                                    row.splice(i + 1, 1);
+                                }
+                            }
+                            
+                            while (row.length < 4) row.push(0);
+                            if (direction === 'right') row.reverse();
+                            
+                            grid[y] = row;
+                        }
+                    } else { // up or down
+                        for (let x = 0; x < 4; x++) {
+                            let column = [];
+                            for (let y = 0; y < 4; y++) {
+                                if (grid[y][x] !== 0) column.push(grid[y][x]);
+                            }
+                            
+                            if (direction === 'down') column.reverse();
+                            
+                            for (let i = 0; i < column.length - 1; i++) {
+                                if (column[i] === column[i + 1]) {
+                                    column[i] *= 2;
+                                    score += column[i];
+                                    column.splice(i + 1, 1);
+                                }
+                            }
+                            
+                            while (column.length < 4) column.push(0);
+                            if (direction === 'down') column.reverse();
+                            
+                            for (let y = 0; y < 4; y++) {
+                                grid[y][x] = column[y];
+                            }
+                        }
+                    }
+                    
+                    // Check if grid changed
+                    for (let y = 0; y < 4; y++) {
+                        for (let x = 0; x < 4; x++) {
+                            if (grid[y][x] !== oldGrid[y][x]) {
+                                moved = true;
+                                break;
+                            }
+                        }
+                        if (moved) break;
+                    }
+                    
+                    if (moved) {
+                        addRandomTile();
+                        renderGrid();
+                        checkGameOver();
+                        saveBestScore();
+                    }
+                }
+                
+                function checkGameOver() {
+                    // Check for 2048 win
+                    for (let y = 0; y < 4; y++) {
+                        for (let x = 0; x < 4; x++) {
+                            if (grid[y][x] === 2048) {
+                                os.notify('2048', 'Congratulations! You reached 2048!');
+                                return;
+                            }
+                        }
+                    }
+                    
+                    // Check for possible moves
+                    for (let y = 0; y < 4; y++) {
+                        for (let x = 0; x < 4; x++) {
+                            if (grid[y][x] === 0) return;
+                            if (x < 3 && grid[y][x] === grid[y][x + 1]) return;
+                            if (y < 3 && grid[y][x] === grid[y + 1][x]) return;
+                        }
+                    }
+                    
+                    os.notify('2048', 'Game Over! No more moves available.');
+                }
+                
+                function saveBestScore() {
+                    const best = parseInt(localStorage.getItem('2048BestScore') || 0);
+                    if (score > best) {
+                        localStorage.setItem('2048BestScore', score.toString());
+                        document.getElementById('game2048-best').textContent = score;
+                    }
+                }
+                
+                window.os.start2048Game = function() {
+                    grid = Array(4).fill().map(() => Array(4).fill(0));
+                    score = 0;
+                    previousState = null;
+                    
+                    addRandomTile();
+                    addRandomTile();
+                    renderGrid();
+                };
+                
+                window.os.undo2048Move = function() {
+                    if (previousState) {
+                        grid = previousState.grid.map(row => [...row]);
+                        score = previousState.score;
+                        previousState = null;
+                        renderGrid();
+                    }
+                };
+                
+                // Keyboard controls
+                document.addEventListener('keydown', (e) => {
+                    if (!gridElement.parentElement) return;
+                    
+                    switch(e.key) {
+                        case 'ArrowLeft': move('left'); break;
+                        case 'ArrowRight': move('right'); break;
+                        case 'ArrowUp': move('up'); break;
+                        case 'ArrowDown': move('down'); break;
+                    }
+                });
+                
+                // Touch controls for mobile
+                let touchStartX = 0;
+                let touchStartY = 0;
+                
+                gridElement.addEventListener('touchstart', (e) => {
+                    touchStartX = e.touches[0].clientX;
+                    touchStartY = e.touches[0].clientY;
+                }, {passive: true});
+                
+                gridElement.addEventListener('touchend', (e) => {
+                    const touchEndX = e.changedTouches[0].clientX;
+                    const touchEndY = e.changedTouches[0].clientY;
+                    
+                    const dx = touchEndX - touchStartX;
+                    const dy = touchEndY - touchStartY;
+                    
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        if (dx > 50) move('right');
+                        else if (dx < -50) move('left');
+                    } else {
+                        if (dy > 50) move('down');
+                        else if (dy < -50) move('up');
+                    }
+                }, {passive: true});
+                
+                os.start2048Game();
+            }
+            
+            // ==================== PUZZLE GAME ====================
+            
+            loadPuzzleGame(view) {
+                view.innerHTML = `
+                    <div style="text-align: center; height: 100%; display: flex; flex-direction: column;">
+                        <h2>🧩 Puzzle Game</h2>
+                        <p style="margin-bottom: 16px;">Click pieces to move them into the correct order!</p>
+                        
+                        <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 16px;">
+                            <div style="background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 6px;">
+                                <div style="font-size: 12px; opacity: 0.8;">Moves</div>
+                                <div id="puzzle-moves" style="font-size: 24px; font-weight: bold;">0</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 6px;">
+                                <div style="font-size: 12px; opacity: 0.8;">Time</div>
+                                <div id="puzzle-time" style="font-size: 24px; font-weight: bold;">0s</div>
+                            </div>
+                        </div>
+                        
+                        <div id="puzzle-container" class="puzzle-container"></div>
+                        
+                        <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
+                            <button onclick="os.startPuzzleGame()">🔄 New Puzzle</button>
+                            <button onclick="os.solvePuzzle()" class="secondary">🔧 Solve</button>
+                        </div>
+                        
+                        <div style="margin-top: 16px; font-size: 12px; opacity: 0.7;">
+                            <span class="security-indicator security-medium"></span> Puzzle progress saved
+                        </div>
+                    </div>
+                `;
+                
+                setTimeout(() => this.initPuzzleGame(), 100);
+            }
+            
+            initPuzzleGame() {
+                const container = document.getElementById('puzzle-container');
+                if (!container) return;
+                
+                let puzzle = [1,2,3,4,5,6,7,8,0];
+                let emptyIndex = 8;
+                let moves = 0;
+                let startTime = null;
+                let timerInterval = null;
+                
+                function renderPuzzle() {
+                    container.innerHTML = '';
+                    
+                    puzzle.forEach((number, index) => {
+                        const piece = document.createElement('div');
+                        piece.className = `puzzle-piece ${number === 0 ? 'empty' : ''}`;
+                        piece.textContent = number === 0 ? '' : number;
+                        piece.dataset.index = index;
+                        
+                        if (number !== 0) {
+                            piece.onclick = () => {
+                                const clickedIndex = parseInt(piece.dataset.index);
+                                if (canMove(clickedIndex)) {
+                                    movePiece(clickedIndex);
+                                }
+                            };
+                        }
+                        
+                        container.appendChild(piece);
+                    });
+                    
+                    document.getElementById('puzzle-moves').textContent = moves;
+                }
+                
+                function canMove(index) {
+                    const row = Math.floor(index / 3);
+                    const col = index % 3;
+                    const emptyRow = Math.floor(emptyIndex / 3);
+                    const emptyCol = emptyIndex % 3;
+                    
+                    return (Math.abs(row - emptyRow) === 1 && col === emptyCol) ||
+                           (Math.abs(col - emptyCol) === 1 && row === emptyRow);
+                }
+                
+                function movePiece(index) {
+                    [puzzle[index], puzzle[emptyIndex]] = [puzzle[emptyIndex], puzzle[index]];
+                    emptyIndex = index;
+                    moves++;
+                    
+                    renderPuzzle();
+                    checkWin();
+                }
+                
+                function shufflePuzzle() {
+                    for (let i = 0; i < 1000; i++) {
+                        const possibleMoves = [];
+                        for (let j = 0; j < 9; j++) {
+                            if (canMove(j)) possibleMoves.push(j);
+                        }
+                        
+                        const randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+                        movePiece(randomMove);
+                    }
+                    moves = 0;
+                }
+                
+                function checkWin() {
+                    if (puzzle.slice(0, 8).every((val, idx) => val === idx + 1)) {
+                        clearInterval(timerInterval);
+                        const time = Math.floor((Date.now() - startTime) / 1000);
+                        os.notify('Puzzle', `Solved in ${moves} moves and ${time} seconds!`);
+                    }
+                }
+                
+                function startTimer() {
+                    startTime = Date.now();
+                    timerInterval = setInterval(() => {
+                        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                        document.getElementById('puzzle-time').textContent = `${elapsed}s`;
+                    }, 1000);
+                }
+                
+                window.os.startPuzzleGame = function() {
+                    puzzle = [1,2,3,4,5,6,7,8,0];
+                    emptyIndex = 8;
+                    moves = 0;
+                    
+                    clearInterval(timerInterval);
+                    startTimer();
+                    
+                    shufflePuzzle();
+                    renderPuzzle();
+                };
+                
+                window.os.solvePuzzle = function() {
+                    puzzle = [1,2,3,4,5,6,7,8,0];
+                    emptyIndex = 8;
+                    renderPuzzle();
+                    clearInterval(timerInterval);
+                };
+                
+                os.startPuzzleGame();
+            }
+            
+            // ==================== TIC TAC TOE ====================
+            
+            loadTicTacToe(view) {
+                view.innerHTML = `
+                    <div style="text-align: center; height: 100%; display: flex; flex-direction: column;">
+                        <h2>⭕ Tic Tac Toe</h2>
+                        <p style="margin-bottom: 16px;">Play against the AI. Get three in a row to win!</p>
+                        
+                        <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 16px;">
+                            <div style="background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 6px;">
+                                <div style="font-size: 12px; opacity: 0.8;">Player</div>
+                                <div style="font-size: 24px; font-weight: bold;">⭕</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 6px;">
+                                <div style="font-size: 12px; opacity: 0.8;">AI</div>
+                                <div style="font-size: 24px; font-weight: bold;">❌</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 6px;">
+                                <div style="font-size: 12px; opacity: 0.8;">Wins</div>
+                                <div id="ttt-wins" style="font-size: 24px; font-weight: bold;">0-0</div>
+                            </div>
+                        </div>
+                        
+                        <div id="ttt-grid" class="tic-tac-toe-grid"></div>
+                        
+                        <div id="ttt-status" style="margin: 20px 0; font-size: 18px; font-weight: bold;">
+                            Your turn!
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px; justify-content: center;">
+                            <button onclick="os.startTicTacToe()">🔄 New Game</button>
+                            <button onclick="os.resetTicTacToeStats()" class="secondary">📊 Reset Stats</button>
+                        </div>
+                        
+                        <div style="margin-top: 16px; font-size: 12px; opacity: 0.7;">
+                            <span class="security-indicator security-low"></span> Casual game - no encryption needed
+                        </div>
+                    </div>
+                `;
+                
+                setTimeout(() => this.initTicTacToe(), 100);
+            }
+            
+            initTicTacToe() {
+                const grid = document.getElementById('ttt-grid');
+                const status = document.getElementById('ttt-status');
+                if (!grid || !status) return;
+                
+                let board = Array(9).fill('');
+                let currentPlayer = 'O';
+                let gameActive = true;
+                let playerWins = parseInt(localStorage.getItem('tttPlayerWins') || 0);
+                let aiWins = parseInt(localStorage.getItem('tttAIWins') || 0);
+                
+                document.getElementById('ttt-wins').textContent = `${playerWins}-${aiWins}`;
+                
+                const winPatterns = [
+                    [0,1,2], [3,4,5], [6,7,8], // rows
+                    [0,3,6], [1,4,7], [2,5,8], // columns
+                    [0,4,8], [2,4,6] // diagonals
+                ];
+                
+                function renderBoard() {
+                    grid.innerHTML = '';
+                    
+                    board.forEach((cell, index) => {
+                        const cellElement = document.createElement('div');
+                        cellElement.className = 'ttt-cell';
+                        cellElement.textContent = cell;
+                        cellElement.dataset.index = index;
+                        
+                        if (!cell && gameActive) {
+                            cellElement.onclick = () => makeMove(index);
+                        }
+                        
+                        grid.appendChild(cellElement);
+                    });
+                }
+                
+                function makeMove(index) {
+                    if (!gameActive || board[index] !== '') return;
+                    
+                    board[index] = currentPlayer;
+                    renderBoard();
+                    
+                    if (checkWin(currentPlayer)) {
+                        gameActive = false;
+                        if (currentPlayer === 'O') {
+                            playerWins++;
+                            status.textContent = 'You win! 🎉';
+                        } else {
+                            aiWins++;
+                            status.textContent = 'AI wins! 🤖';
+                        }
+                        updateStats();
+                        return;
+                    }
+                    
+                    if (board.every(cell => cell !== '')) {
+                        gameActive = false;
+                        status.textContent = 'Draw! 🤝';
+                        return;
+                    }
+                    
+                    currentPlayer = currentPlayer === 'O' ? 'X' : 'O';
+                    status.textContent = currentPlayer === 'O' ? 'Your turn!' : 'AI thinking...';
+                    
+                    if (currentPlayer === 'X') {
+                        setTimeout(makeAIMove, 500);
+                    }
+                }
+                
+                function makeAIMove() {
+                    if (!gameActive) return;
+                    
+                    // Try to win
+                    let move = findWinningMove('X');
+                    
+                    // Block player win
+                    if (move === -1) move = findWinningMove('O');
+                    
+                    // Take center
+                    if (move === -1 && board[4] === '') move = 4;
+                    
+                    // Take corners
+                    if (move === -1) {
+                        const corners = [0,2,6,8].filter(i => board[i] === '');
+                        if (corners.length > 0) move = corners[Math.floor(Math.random() * corners.length)];
+                    }
+                    
+                    // Take any available
+                    if (move === -1) {
+                        const available = board.map((cell, idx) => cell === '' ? idx : -1).filter(idx => idx !== -1);
+                        if (available.length > 0) move = available[Math.floor(Math.random() * available.length)];
+                    }
+                    
+                    if (move !== -1) {
+                        makeMove(move);
+                    }
+                }
+                
+                function findWinningMove(player) {
+                    for (let pattern of winPatterns) {
+                        const [a,b,c] = pattern;
+                        const cells = [board[a], board[b], board[c]];
+                        
+                        if (cells.filter(c => c === player).length === 2) {
+                            const emptyIndex = pattern[cells.findIndex(c => c === '')];
+                            if (board[emptyIndex] === '') {
+                                return emptyIndex;
+                            }
+                        }
+                    }
+                    return -1;
+                }
+                
+                function checkWin(player) {
+                    return winPatterns.some(pattern => 
+                        pattern.every(index => board[index] === player)
+                    );
+                }
+                
+                function updateStats() {
+                    localStorage.setItem('tttPlayerWins', playerWins.toString());
+                    localStorage.setItem('tttAIWins', aiWins.toString());
+                    document.getElementById('ttt-wins').textContent = `${playerWins}-${aiWins}`;
+                }
+                
+                window.os.startTicTacToe = function() {
+                    board = Array(9).fill('');
+                    currentPlayer = 'O';
+                    gameActive = true;
+                    status.textContent = 'Your turn!';
+                    renderBoard();
+                };
+                
+                window.os.resetTicTacToeStats = function() {
+                    playerWins = 0;
+                    aiWins = 0;
+                    updateStats();
+                    os.notify('Tic Tac Toe', 'Statistics reset');
+                };
+                
+                os.startTicTacToe();
+            }
+            
+            // ==================== OTHER APP LOADERS ====================
+            
+            loadFileExplorer(view) {
+                view.innerHTML = `
+                    <div class="file-explorer">
+                        <div class="sidebar">
+                            <div class="sidebar-item active">📁 This PC</div>
+                            <div class="sidebar-item">📁 Documents</div>
+                            <div class="sidebar-item">📁 Downloads</div>
+                            <div class="sidebar-item">📁 Pictures</div>
+                            <div class="sidebar-item">📁 Music</div>
+                            <div class="sidebar-item">📁 Videos</div>
+                            <div class="sidebar-item">📁 Desktop</div>
+                            <div class="sidebar-item">🔗 Network</div>
+                        </div>
+                        <div class="content">
+                            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                                <button onclick="os.notify('File Explorer', 'Back')">← Back</button>
+                                <button onclick="os.notify('File Explorer', 'Forward')">→ Forward</button>
+                                <button class="secondary" onclick="os.notify('File Explorer', 'Refresh')">↻ Refresh</button>
+                                <input type="text" placeholder="Search files..." style="flex: 1;">
+                            </div>
+                            <div class="file-grid">
+                                ${['Document.docx', 'Spreadsheet.xlsx', 'Presentation.pptx', 'Image.jpg', 'Video.mp4', 'Music.mp3', 'Archive.zip', 'Code.js', 'Readme.txt', 'Config.json']
+                                    .map(file => {
+                                        const icon = file.includes('.doc') ? '📄' :
+                                                   file.includes('.xls') ? '📊' :
+                                                   file.includes('.ppt') ? '📽️' :
+                                                   file.includes('.jpg') ? '🖼️' :
+                                                   file.includes('.mp4') ? '🎬' :
+                                                   file.includes('.mp3') ? '🎵' :
+                                                   file.includes('.zip') ? '📦' :
+                                                   file.includes('.js') ? '📝' :
+                                                   file.includes('.txt') ? '📃' :
+                                                   file.includes('.json') ? '⚙️' : '📄';
+                                        return `
+                                            <div class="file-item" onclick="os.notify('File Explorer', 'Opening ${file}')">
+                                                <div class="icon">${icon}</div>
+                                                <div>${file}</div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            loadTerminal(view) {
+                view.innerHTML = `
+                    <div class="terminal">
+                        <div>BhekOS Terminal 6.0.0</div>
+                        <div>Type 'help' for available commands</div>
+                        <br>
+                        <div>> Welcome to BhekOS Terminal</div>
+                        <div>> System ready with enhanced security</div>
+                        <div>> Password protection: <span style="color:#4CAF50">ACTIVE</span></div>
+                        <br>
+                        <div id="terminal-output"></div>
+                        <div class="terminal-input">
+                            <span class="prompt">$</span>
+                            <input type="text" id="terminal-input" 
+                                   style="background: transparent; border: none; color: #00ff00; flex: 1;" 
+                                   placeholder="Type command..." 
+                                   onkeydown="if(event.key === 'Enter') os.executeCommand(this.value)">
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // ==================== SECURITY FUNCTIONS ====================
+            
+            showGamePasswordPrompt(gameType) {
+                const promptDiv = document.createElement('div');
+                promptDiv.className = 'password-prompt';
+                promptDiv.innerHTML = `
+                    <h3>🔐 Game Password</h3>
+                    <p>Enter password to play this game</p>
+                    <input type="password" id="game-password-input" placeholder="Enter password" 
+                           style="width: 100%; margin: 10px 0; padding: 10px;" 
+                           onkeydown="if(event.key === 'Enter') os.verifyGamePassword('${gameType}')">
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button onclick="this.parentElement.parentElement.remove()">Cancel</button>
+                        <button onclick="os.verifyGamePassword('${gameType}')">Play Game</button>
+                    </div>
+                `;
+                document.getElementById('desktop').appendChild(promptDiv);
+            }
+            
+            verifyGamePassword(gameType) {
+                const input = document.getElementById('game-password-input');
+                if (!input) return;
+                
+                const security = JSON.parse(localStorage.getItem('securitySettings') || '{}');
+                const gamePassword = security.gamePassword || 'play123';
+                
+                if (input.value === gamePassword) {
+                    document.querySelector('.password-prompt')?.remove();
+                    this.launchGame(gameType);
+                } else {
+                    input.value = '';
+                    input.placeholder = 'Wrong password';
+                    input.style.borderColor = '#ff5252';
+                    this.notify('Game Security', 'Wrong password - try again');
+                }
+            }
+            
+            toggleGamePasswords(enabled) {
+                const security = JSON.parse(localStorage.getItem('securitySettings') || '{}');
+                security.requirePasswordForGames = enabled;
+                localStorage.setItem('securitySettings', JSON.stringify(security));
+                
+                this.notify('Game Security', 
+                    enabled ? 'Password protection enabled for games' : 
+                             'Password protection disabled for games');
+            }
+            
+            // ==================== PWA INSTALLATION ====================
+            
+            setupPWAInstall() {
+                window.addEventListener('beforeinstallprompt', (e) => {
+                    e.preventDefault();
+                    this.deferredPrompt = e;
+                    this.showInstallPrompt();
+                });
+                
+                if (window.matchMedia('(display-mode: standalone)').matches || 
+                    window.navigator.standalone === true) {
+                    console.log('BhekOS is running as a PWA');
+                }
+            }
+            
+            showInstallPrompt() {
+                if (!this.deferredPrompt || this.isMobile) return;
+                
+                const prompt = document.getElementById('install-prompt');
+                prompt.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                        <div style="font-size: 24px;">🖥️</div>
+                        <div>
+                            <div style="font-weight: 500;">Install BhekOS</div>
+                            <div style="font-size: 12px; opacity: 0.8;">Install as an app for easy access</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="os.installPWA()" style="flex: 1;">Install App</button>
+                        <button onclick="this.parentElement.parentElement.style.display='none'" class="secondary">Later</button>
+                    </div>
+                `;
+                prompt.style.display = 'block';
+                
+                setTimeout(() => {
+                    prompt.style.display = 'none';
+                }, 10000);
+            }
+            
+            installPWA() {
+                if (!this.deferredPrompt) {
+                    this.showInstallInstructions();
+                    return;
+                }
+                
+                this.deferredPrompt.prompt();
+                this.deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        this.notify('Installation', 'BhekOS is being installed...');
+                    }
+                    this.deferredPrompt = null;
+                    document.getElementById('install-prompt').style.display = 'none';
+                });
+            }
+            
+            showInstallInstructions() {
+                const instructions = document.getElementById('install-instructions');
+                instructions.innerHTML = `
+                    <h3 style="margin-bottom: 16px;">📱 Install BhekOS</h3>
+                    
+                    <div style="text-align: left; margin-bottom: 20px;">
+                        <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                            <span style="background: var(--accent); width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px;">1</span>
+                            <strong>Chrome/Edge:</strong> Click ⋮ menu → "Install BhekOS"
+                        </div>
+                        
+                        <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                            <span style="background: var(--accent); width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px;">2</span>
+                            <strong>Safari:</strong> Tap Share → "Add to Home Screen"
+                        </div>
+                        
+                        <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                            <span style="background: var(--accent); width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px;">3</span>
+                            <strong>Firefox:</strong> Click ⚙ menu → "Install"
+                        </div>
+                        
+                        <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                            <span style="background: var(--accent); width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px;">4</span>
+                            <strong>Android Chrome:</strong> Tap ⋮ → "Add to Home screen"
+                        </div>
+                    </div>
+                    
+                    <button onclick="this.parentElement.style.display='none'" style="width: 100%;">Close</button>
+                `;
+                instructions.style.display = 'block';
+            }
+            
+            // ==================== UTILITY FUNCTIONS ====================
+            
+            notify(title, message) {
+                const notification = document.createElement('div');
+                notification.className = 'notification';
+                notification.innerHTML = `
+                    <div style="font-weight: 500; margin-bottom: 4px;">${title}</div>
+                    <div style="font-size: 13px; opacity: 0.9;">${message}</div>
+                `;
+                document.getElementById('desktop').appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.classList.add('fadeout');
+                    setTimeout(() => notification.remove(), 3000);
+                }, 3000);
+            }
+            
+            updateClock() {
+                const now = new Date();
+                const clock = document.getElementById('clock');
+                if (clock) {
+                    clock.textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                }
+            }
+            
+            toggleStart() {
+                const menu = document.getElementById('startMenu');
+                menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
+            }
+            
+            shutdown() {
+                const screen = document.getElementById('shutdown-screen');
+                screen.innerHTML = `
+                    <div style="text-align: center;">
+                        <div style="font-size: 64px; margin-bottom: 30px;">🖥️</div>
+                        <h1 style="font-size: 36px; margin-bottom: 10px;">Shut Down BhekOS?</h1>
+                        <p style="opacity: 0.8; margin-bottom: 40px;">Any unsaved work will be lost</p>
+                        <div class="shutdown-options">
+                            <button onclick="os.performShutdown()" style="background: #ff5252;">Shut Down</button>
+                            <button onclick="os.restart()" style="background: #2196F3;">Restart</button>
+                            <button onclick="document.getElementById('shutdown-screen').style.display = 'none'" 
+                                    style="background: rgba(255,255,255,0.1);">Cancel</button>
+                        </div>
+                        <div style="margin-top: 30px; font-size: 12px; opacity: 0.6;">
+                            BhekOS ${BHEKOS_VERSION} | Build ${BHEKOS_BUILD}
+                        </div>
+                    </div>
+                `;
+                screen.style.display = 'flex';
+            }
+            
+            // ... (Other functions: registerServiceWorker, executeCommand, etc.)
+        }
+
+        // ==================== INITIALIZE OS ====================
+        const os = new BhekOS();
+        window.os = os;
+        
+        // Initialize when page loads
+        window.onload = () => {
+            console.log(`BhekOS ${BHEKOS_VERSION} initialized`);
+        };
+        
+        // Close context menu on ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.getElementById('contextMenu').style.display = 'none';
+                document.getElementById('startMenu').style.display = 'none';
+                document.getElementById('install-instructions').style.display = 'none';
+            }
+        });
+        
+        // Close menus when clicking on desktop
+        document.getElementById('desktop').addEventListener('click', (e) => {
+            if (!e.target.closest('.window') && !e.target.closest('.taskbar') && 
+                !e.target.closest('#startMenu') && !e.target.closest('#contextMenu')) {
+                document.getElementById('contextMenu').style.display = 'none';
+                document.getElementById('startMenu').style.display = 'none';
+                
+                if (os.selectedDesktopIcon) {
+                    const selected = document.getElementById(`desktop-${os.selectedDesktopIcon}`);
+                    if (selected) selected.classList.remove('selected');
+                    os.selectedDesktopIcon = null;
+                }
+            }
+        });
+    </script>
+</body>
+  </html>
